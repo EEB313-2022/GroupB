@@ -1,0 +1,89 @@
+---
+title: "313 project temp"
+author: "Yara Ghabra 1006336056"
+date: "2022-10-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+setwd("C:/Users/yarag_ldivedm/OneDrive/Documents/EEB313")
+temp <- read.csv("California metric.csv")
+
+temp_annual<- temp %>% 
+  select(STATION, NAME, DATE, PRCP, TMAX, TMIN) %>% 
+  group_by(DATE) %>%
+  filter(!is.na(TMAX), !is.na(TMIN), !is.na(PRCP)) %>% 
+  summarise(avg_prcp= mean(PRCP), avg_tmax= mean(TMAX), avg_tmin= mean(TMIN))
+
+temp_annual
+```
+
+```{r}
+#LOUISIANA
+
+Louisiana <- read.csv("Louisiana metric.csv")
+
+temp_monthly1<- Louisiana %>% 
+  select(STATION, NAME, DATE, PRCP, TMAX, TMIN) %>% 
+  group_by(DATE) %>%
+  filter(!is.na(TMAX), !is.na(TMIN), !is.na(PRCP)) %>%
+  mutate(month= month(DATE), year= year(DATE))
+
+temp_month1<- temp_monthly1 %>% 
+  group_by(year, month) %>% 
+  filter(!is.na(TMAX), !is.na(TMIN), !is.na(PRCP)) %>% 
+  summarise(avg_prcp= mean(PRCP), avg_tmax= mean(TMAX), avg_tmin= mean(TMIN)) %>% 
+  mutate(year=as.factor(year), month=as.factor(month))
+temp_month1
+
+temp_month1 %>% 
+  ggplot(aes(x=month, y=avg_tmax, colour=year))+
+  geom_point()
+
+
+```
+
+
+
+
+```{r}
+#CALIFORNIA
+
+library("lubridate")
+Cali <- read.csv("CALIFORNIA.csv")
+
+temp_monthly<- Cali %>% 
+  select(STATION, NAME, DATE, PRCP, TMAX, TMIN) %>% 
+  group_by(DATE) %>%
+  filter(!is.na(TMAX), !is.na(TMIN), !is.na(PRCP)) %>%
+  mutate(month= month(DATE), year= year(DATE))
+
+temp_month<- temp_monthly %>% 
+  group_by(year, month) %>% 
+  filter(!is.na(TMAX), !is.na(TMIN), !is.na(PRCP)) %>% 
+  summarise(avg_prcp= mean(PRCP), avg_tmax= mean(TMAX), avg_tmin= mean(TMIN)) %>% 
+  mutate(year=as.factor(year), month=as.factor(month))
+temp_month
+
+temp_month %>% 
+  ggplot(aes(x=month, y=avg_tmax, colour=year))+
+  geom_point()
+  
+
+```
+
+
+
+
+
+
+
+
+
+
+
