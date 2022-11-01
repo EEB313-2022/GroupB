@@ -1,0 +1,68 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+rm(list=ls())
+
+library(tidyverse)
+library(lubridate)
+library(MuMIn)
+library(nlme)
+library(terra) #designed to deal with spatial data and rasters
+library(sf) #sptatial data and manipulations of spatial data
+library(maps) #for plotting maps
+```
+
+#setwd("C:/Users/wande/OneDrive - University of Toronto/2022-2023/EEB313H1F/group_project/")
+```{r}
+df <- read.csv("e:/DataProcessingR/phenology_raw/full_dataset_with_year_and_tally_of_obs.csv")
+head(df)
+
+df_CA <- df %>% 
+  filter(State == "CA")
+
+write.csv(df_CA, "california_full.csv")
+
+df_AZ <- df %>% 
+  filter(State == "AZ")
+
+write.csv(df_AZ, "arizona_full.csv")
+
+df_CA_AZ <- df %>% 
+  filter(State == "CA" | State == "AZ")
+
+df_CA_AZ %>% 
+  group_by(Kingdom, Genus, Species, State) %>% 
+  tally() %>% 
+  filter(n > 500 & Kingdom == "Plantae") %>% 
+  write.csv("df_commmon_AZ_CA.csv")
+
+
+
+df_CA_LA <- df %>% 
+  filter(State == "CA" | State == "LA")
+
+years_of_obs <- df_CA_LA %>% 
+  group_by(obs_year) %>% 
+  tally()
+
+common_species_between_both <- df_CA_LA %>% 
+  filter((Genus == "Acer" & Species == "negundo") |
+           (Genus == "Liquidambar" & Species == "styraciflua") |
+           (Genus == "Platanus" & Species == "occidentalis") |
+           (Genus == "Salix" & Species == "nigra"))
+
+write.csv(common_species_between_both, "all_observations_common_ssp_CA_LA.csv")
+
+str(common_species_between_both)
+
+phenophases <- df %>% 
+  filter(Kingdom == "Plantae" &
+           obs_year >= 2009) %>% 
+  group_by(Phenophase_ID, Phenophase_Description) %>% 
+  tally()
+
+write.csv(phenophases, "plant_phenophases_with_tallies.csv")
+  
+```
