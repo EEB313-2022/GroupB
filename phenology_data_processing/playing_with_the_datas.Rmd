@@ -1,0 +1,93 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+clean workspace
+```{r}
+rm(list=ls())
+library(tidyverse)
+
+df <- read_csv("testing_phenology_set/status_intensity_observation_data.csv")
+df <- read_csv("phenology_canada_wide_2011/status_intensity_observation_data.csv")
+
+dflarge <- read_csv("e:/DataProcessingR/phenology_raw/status_intensity_observation_data.csv")
+head(dflarge)
+
+species_observations <- dflarge %>% 
+  group_by(Genus, Species) %>% 
+  arrange(Genus, Species) %>% 
+  tally()
+
+write.csv(species_observations, "species_tallies_full.csv")
+
+
+library("lubridate")
+dflarge <- dflarge %>% 
+  mutate(obs_year = year(Observation_Date)) 
+
+head(dflarge)
+```
+
+```{r}
+
+dflarge <- dflarge %>% 
+  group_by(Genus, Species) %>% 
+  mutate(unique_observations = n())
+
+write_csv(dflarge, "e:/DataProcessingR/phenology_raw/full_dataset_with_year_and_tally_of_obs")
+
+df_mutualist_search <- dflarge %>% 
+  filter(unique_observations > 5000) %>% 
+  select(Genus, Species, Common_Name, Kingdom, unique_observations) %>% 
+  group_by(Genus, Species)
+
+temp <- df_mutualist_search %>% 
+  group_by(Kingdom, Genus, Species, Common_Name) %>% 
+  tally()
+
+write_csv(temp, "e:/DataProcessingR/phenology_raw/over_5000_obs.csv")
+  
+
+df_milkweed <- dflarge %>% 
+  filter(Genus == "Asclepias")
+
+milkweed_phenophases <- df_milkweed %>% 
+  group_by(Phenophase_ID, Phenophase_Description ) %>% 
+  tally()
+write_csv(milkweed_phenophases, "e:/DataProcessingR/phenology_raw/milkweed_phenophases.csv")
+
+milkweed_growth <- df_milkweed %>% 
+  filter(Phenophase_ID == 482) %>% 
+  filter(Phenophase_Status > 0) %>% 
+  arrange(Day_of_Year, obs_year)
+
+df_milkweed %>% 
+  filter(Phenophase_ID == 482) %>% 
+  filter(Phenophase_Status > 0) %>% 
+  arrange(obs_year) %>% 
+  ggplot(aes(y=Day_of_Year, x = Observation_Date)) +
+  geom_point()
+
+
+head(df_milkweed, 500)
+
+obs_by_year <- dflarge %>% 
+  group_by(obs_year) %>% 
+  arrange(obs_year) %>% 
+  tally()
+
+write_csv(obs_by_year, "e:/DataProcessingR/phenology_raw/observations_by_year_count.csv")
+
+df_many_obs <- dflarge %>% 
+  filter(unique_observations < 2000)
+
+write_csv(df_many_obs, "e:/DataProcessingR/phenology_raw/status_intensity_n2000_year_counts.csv")
+
+head(dflarge)
+
+write_csv(dflarge, "e:/DataProcessingR/phenology_raw/status_intensity_with_year.csv")
+
+# clear memory
+rm(list=ls())
+```
