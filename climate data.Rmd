@@ -1,0 +1,124 @@
+---
+title: "313 project temp"
+author: "Yara Ghabra 1006336056"
+date: "2022-10-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+temp <- read.csv("CALIFORNIA.csv")
+
+temp_annual<- temp %>% 
+  select(STATION, NAME, DATE, PRCP, TMAX, TMIN) %>% 
+  group_by(DATE) %>%
+  filter(!is.na(TMAX), !is.na(TMIN), !is.na(PRCP)) %>% 
+  summarise(avg_prcp= mean(PRCP), avg_tmax= mean(TMAX), avg_tmin= mean(TMIN))
+
+temp_annual
+```
+
+```{r}
+#LOUISIANA
+
+Louisiana <- read.csv("Louisiana metric.csv")
+
+temp_monthly1<- Louisiana %>% 
+  select(STATION, NAME, DATE, PRCP, TMAX, TMIN) %>% 
+  group_by(DATE) %>%
+  filter(!is.na(TMAX), !is.na(TMIN), !is.na(PRCP)) %>%
+  mutate(month= month(DATE), year= year(DATE))
+
+temp_month1<- temp_monthly1 %>% 
+  group_by(year, month) %>% 
+  filter(!is.na(TMAX), !is.na(TMIN), !is.na(PRCP)) %>% 
+  summarise(avg_prcp= mean(PRCP), avg_tmax= mean(TMAX), avg_tmin= mean(TMIN)) %>% 
+  mutate(year=as.factor(year), month=as.factor(month))
+temp_month1
+
+temp_month1 %>% 
+  ggplot(aes(x=month, y=avg_tmax, colour=year))+
+  geom_point()
+
+
+```
+
+
+
+
+```{r}
+#CALIFORNIA
+
+library("lubridate")
+Cali <- read.csv("CALIFORNIA.csv")
+
+temp_monthly<- Cali %>% 
+  select(STATION, NAME, DATE, PRCP, TMAX, TMIN) %>% 
+  group_by(DATE) %>%
+  filter(!is.na(TMAX), !is.na(TMIN), !is.na(PRCP)) %>%
+  mutate(month= month(DATE), year= year(DATE))
+
+temp_month<- temp_monthly %>% 
+  group_by(year, month) %>% 
+  filter(!is.na(TMAX), !is.na(TMIN), !is.na(PRCP)) %>% 
+  summarise(avg_prcp= mean(PRCP), avg_tmax= mean(TMAX), avg_tmin= mean(TMIN)) %>% 
+  mutate(year=as.factor(year), month=as.factor(month))
+temp_month
+
+temp_month %>% 
+  ggplot(aes(x=month, y=avg_tmax, colour=year))+
+  geom_point()
+  
+
+```
+
+###Precipitation
+
+
+```{r}
+#CALIFORNIA
+cali_precip_yearly<- temp_monthly %>% 
+  group_by(year) %>% 
+  filter(!is.na(PRCP)) %>% 
+  mutate(year=as.factor(year), avg.precip=mean(PRCP)) %>% 
+  select(year, avg.precip) %>% 
+  unique()
+
+cali_precip_yearly
+```
+
+```{r}
+cali_precip_yearly %>% 
+  ggplot(aes(x=year, y=avg.precip))+
+  geom_col()
+```
+```{r}
+#LOUISIANA
+lou_precip_yearly<- temp_monthly1%>% 
+  group_by(year) %>% 
+  filter(!is.na(PRCP)) %>% 
+  mutate(year=as.factor(year), avg.precip=mean(PRCP)) %>% 
+  select(year, avg.precip) %>% 
+  unique()
+
+lou_precip_yearly
+```
+```{r}
+lou_precip_yearly %>% 
+  ggplot(aes(x=year, y=avg.precip))+
+  geom_col()
+#much less variable than california
+```
+
+
+
+##are summers getting drier? could look at dates of rain throughout the years
+
+
+
+
+
