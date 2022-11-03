@@ -7,11 +7,13 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+getwd()
 ```
 
 ```{r}
 library(tidyverse)
-temp <- read.csv("CALIFORNIA.csv")
+library(lubridate)
+temp <- read.csv("/Users/gracewalkermitchell/Desktop/EEB313/GroupB/CALIFORNIA.csv")
 
 temp_annual<- temp %>% 
   select(STATION, NAME, DATE, PRCP, TMAX, TMIN) %>% 
@@ -25,30 +27,46 @@ temp_annual
 ```{r}
 #LOUISIANA
 
-Louisiana <- read.csv("Louisiana metric.csv")
+Louisiana <- read.csv("/Users/gracewalkermitchell/Desktop/EEB313/GroupB/Louisiana metric.csv")
 
-temp_monthly1<- Louisiana %>% 
+lou_temp_monthly<- Louisiana %>% 
   select(STATION, NAME, DATE, PRCP, TMAX, TMIN) %>% 
   group_by(DATE) %>%
   filter(!is.na(TMAX), !is.na(TMIN), !is.na(PRCP)) %>%
-  mutate(month= month(DATE), year= year(DATE))
+  mutate(month= month(DATE), year= year(DATE), day=yday(DATE))
 
-temp_month1<- temp_monthly1 %>% 
+lou_temp_month<- lou_temp_monthly %>% 
   group_by(year, month) %>% 
   filter(!is.na(TMAX), !is.na(TMIN), !is.na(PRCP)) %>% 
   summarise(avg_prcp= mean(PRCP), avg_tmax= mean(TMAX), avg_tmin= mean(TMIN)) %>% 
   mutate(year=as.factor(year), month=as.factor(month))
-temp_month1
+lou_temp_month
 
-temp_month1 %>% 
+lou_temp_month %>% 
   ggplot(aes(x=month, y=avg_tmax, colour=year))+
-  geom_point()
+  geom_point()+
+  geom_line(mapping=aes(group=year))
 
 
 ```
+```{r}
+#LOUISIANA SUMMER TEMP MAXES
+lou_summer_max<-lou_temp_monthly %>% 
+  group_by(year, month) %>% 
+  mutate(avg_temp=mean(TMAX)) %>% 
+  filter(5<=month & month<=10) %>% 
+  select(month, year, avg_temp) %>% 
+  unique()
+
+lou_summer_max$year<-as.factor(lou_summer_max$year)
+
+ggplot(data=lou_summer_max, aes(month, avg_temp, colour=year))+
+         geom_point()+
+         geom_line(mapping=aes(group=year))
+         
 
 
-
+```
 
 ```{r}
 #CALIFORNIA
@@ -56,32 +74,50 @@ temp_month1 %>%
 library("lubridate")
 Cali <- read.csv("CALIFORNIA.csv")
 
-temp_monthly<- Cali %>% 
+cali_temp_monthly<- Cali %>% 
   select(STATION, NAME, DATE, PRCP, TMAX, TMIN) %>% 
   group_by(DATE) %>%
   filter(!is.na(TMAX), !is.na(TMIN), !is.na(PRCP)) %>%
-  mutate(month= month(DATE), year= year(DATE))
+  mutate(month= month(DATE), year= year(DATE), day=yday(DATE))
 
-temp_month<- temp_monthly %>% 
+cali_temp_month<- cali_temp_monthly %>% 
   group_by(year, month) %>% 
   filter(!is.na(TMAX), !is.na(TMIN), !is.na(PRCP)) %>% 
   summarise(avg_prcp= mean(PRCP), avg_tmax= mean(TMAX), avg_tmin= mean(TMIN)) %>% 
   mutate(year=as.factor(year), month=as.factor(month))
-temp_month
+cali_temp_month
 
-temp_month %>% 
+cali_temp_month %>% 
   ggplot(aes(x=month, y=avg_tmax, colour=year))+
-  geom_point()
+  geom_point()+
+  geom_line(mapping=aes(group=year))
+
   
 
 ```
+```{r}
+#CALIFORNIA SUMMER TEMP MAXES
+cali_summer_max<-cali_temp_monthly %>% 
+  group_by(year, month) %>% 
+  mutate(avg_temp=mean(TMAX)) %>% 
+  filter(5<=month & month<=10) %>% 
+  select(month, year, avg_temp) %>% 
+  unique()
+
+cali_summer_max$year<-as.factor(cali_summer_max$year)
+
+ggplot(data=cali_summer_max, aes(month, avg_temp, colour=year))+
+         geom_point()+
+         geom_line(mapping=aes(group=year))
+```
+
 
 ###Precipitation
 
 
 ```{r}
 #CALIFORNIA
-cali_precip_yearly<- temp_monthly %>% 
+cali_precip_yearly<- cali_temp_monthly %>% 
   group_by(year) %>% 
   filter(!is.na(PRCP)) %>% 
   mutate(year=as.factor(year), avg.precip=mean(PRCP)) %>% 
@@ -98,7 +134,7 @@ cali_precip_yearly %>%
 ```
 ```{r}
 #LOUISIANA
-lou_precip_yearly<- temp_monthly1%>% 
+lou_precip_yearly<- lou_temp_monthly%>% 
   group_by(year) %>% 
   filter(!is.na(PRCP)) %>% 
   mutate(year=as.factor(year), avg.precip=mean(PRCP)) %>% 
@@ -116,9 +152,35 @@ lou_precip_yearly %>%
 
 
 
-##are summers getting drier? could look at dates of rain throughout the years
+###are summers getting drier? could look at dates of rain throughout the years
 
+```{r}
+#CALIFORNIA dates of rain - year round
+cali_temp_monthly %>% 
+  ggplot(aes(day, PRCP))+
+  geom_col()+
+  facet_wrap(~year)
+```
 
+```{r}
+#are summers getting drier? dates of rain between April and September
+cali_temp_monthly %>% 
+  filter(month>=4 & month<=9) %>% 
+  ggplot(aes(day, PRCP))+
+  geom_col()+
+  facet_wrap(~year)
+```
 
+```{r}
+#mean yearly summer precipitation in California
+cali_temp_monthly %>% 
+  filter(month>=4 & month<=9) %>%
+  group_by(year) %>% 
+  summarise(mean_precip=mean(PRCP)) %>% 
+  ggplot(aes(year, mean_precip))+
+  geom_point()+
+  geom_smooth()+
+  theme_classic()
+```
 
 
