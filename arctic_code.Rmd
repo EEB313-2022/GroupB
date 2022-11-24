@@ -5,6 +5,8 @@ output: html_document
 
 ```{r}
 library(tidyverse)
+library(lmerTest)
+library(lme4)
 ```
 
 
@@ -26,15 +28,109 @@ numbers<-pheno_data_filt %>%
   ungroup() %>% 
   filter(soil_moisture == "wet" | soil_moisture =="dry" | soil_moisture == "moist")
 
+#only including wet and dry 
+spp_filt[spp_filt == "moist"] <- "wet"
+  
+
 #filtering by three species of interest - occur in both wet and dry, have a similar time range of observations, and have a lot of observations
 spp_filt<-pheno_data_filt %>% 
-  filter(spp == "DRALAC" | spp == "PAPRAD" | spp == "POLVIV" )
+  filter(spp == "DRALAC" | spp == "PAPRAD" | spp == "POLVIV" | spp == "PEDHIR") %>% 
+  filter(soil_moisture =="wet" | soil_moisture =="moist" | soil_moisture =="dry")
 
-
-#seeing which sites our species occur in that have both wet and dry to see which sites to narrow it down to
-site_numbers<-spp_filt %>% 
-  group_by(spp,study_area, soil_moisture) %>% 
-  summarise(n=n()) %>% 
-  ungroup()
+spp_filt[spp_filt == "moist"] <- "wet"
 
 ```
+
+
+```{r}
+#creating a dataset per species for t tests
+polviv_ttest<-spp_filt %>% 
+  filter(spp == "POLVIV")
+dralac_ttest<-spp_filt %>% 
+  filter(spp == "DRALAC")
+paprad_ttest<-spp_filt %>% 
+  filter(spp == "PAPRAD")
+pedhir_ttest<-spp_filt %>% 
+  filter(spp == "PEDHIR")
+
+polviv_ttest[polviv_ttest == "moist"] <- "wet"
+dralac_ttest[dralac_ttest == "moist"] <- "wet"
+paprad_ttest[paprad_ttest == "moist"] <- "wet"
+pedhir_ttest[pedhir_ttest == "moist"] <- "wet"
+
+
+#removing blank values from the POLVIV dataset
+polviv_ttest<-polviv_ttest %>% 
+  filter(soil_moisture == "dry" | soil_moisture == "wet")
+```
+
+
+###check assumptions for t tests!!!!!!
+
+
+```{r}
+#performing t test for paprad
+t.test(DOY~soil_moisture, data = paprad_ttest)
+```
+
+```{r}
+#t test for polviv
+t.test(DOY~soil_moisture, data = polviv_ttest)
+```
+
+```{r}
+# t test for dralac
+t.test(DOY~soil_moisture, data = dralac_ttest)
+```
+
+
+```{r}
+#t test for pedhir
+t.test(DOY~soil_moisture, data = pedhir_ttest)
+```
+
+```{r}
+#attempting a t test with one site per species (site with the most observations)
+
+#polviv shows a significant difference at both sites which contain both dry and wet soils, however the results are opposite
+polviv_ttest2<-polviv_ttest %>% 
+  filter(study_area == "Endalen")
+
+t.test(DOY~soil_moisture, data = polviv_ttest2)
+
+polviv_ttest3<-polviv_ttest %>% 
+  filter(study_area == "Adventdalen")
+
+t.test(DOY~soil_moisture, data = polviv_ttest3)
+```
+
+###check assumptions for linear model!!!!!
+
+
+```{r}
+#creating a linear model to test the effects of soil moisture on flowering date
+#random intercept, fixed slope
+
+mix_model_int<-lmer(DOY~soil_moisture * spp +
+                      (1|study_area/subsite) + (1|year),
+                    data = spp_filt)
+summary(mix_model_int)
+```
+
+```{r}
+#looking at the effects without species
+mix_model_int2<-lmer(DOY~soil_moisture +
+                      (1|study_area/subsite) + (1|year),
+                    data = spp_filt)
+summary(mix_model_int2)
+
+```
+
+```{r}
+#model selection
+AICc(mix_model_int, mix_model_int2)
+```
+
+
+
+
