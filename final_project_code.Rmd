@@ -1,0 +1,389 @@
+---
+title: "Untitled"
+author: "Yara Ghabra 1006336056, Grace Walker Mitchell 1005046326"
+date: "2022-11-22"
+output: html_document
+---
+
+
+```{r}
+library(tidyverse)
+library(lmerTest)
+library(lme4)
+library(ggalt)
+library(MuMIn)
+library(sjmisc)
+library(car)
+```
+
+```{r}
+#writing datasets into CSV for sharing in github
+write.csv(pheno_data, "final_project_full_data.csv")
+write.csv(spp_filt, "final_project_filtered_data.csv")
+```
+
+
+###Data Manipulation
+```{r}
+#read in the unaltered phenophase data set
+pheno_data<-read.csv("/Users/gracewalkermitchell/Desktop/EEB313/project/CCIN13215_20220120_tundra_phenology_database.csv")
+
+#filter the dataset by flowering phenophase, control treatment, forb functional group, and species of interest (species that occur over the same time span with a lot of observations)
+pheno_data_filt<-pheno_data %>% 
+  filter(phenophase == "flower") %>% 
+  filter(treatment == "CTL") %>% 
+  filter(functional_group == "forb") %>% 
+  filter(spp == "CARBEL" | spp == "DRALAC" | spp == "PAPRAD" | spp == "POLVIV" | spp == "PEDHIR" | spp == "SAXOPP" | spp == "SILACA" | spp == "STECRA")
+
+#seeing how many species occur in both wet and dry
+numbers<-pheno_data_filt %>% 
+  group_by(spp,soil_moisture) %>% 
+  summarise(n=n()) %>% 
+  ungroup() %>% 
+  filter(soil_moisture == "wet" | soil_moisture =="dry" | soil_moisture == "moist")
+  
+#filtering by four species of interest - occur in both wet and dry, have a similar time range of observations, and have a lot of observations
+spp_filt<-pheno_data_filt %>% 
+  filter(spp == "DRALAC" | spp == "PAPRAD" | spp == "POLVIV" | spp == "PEDHIR") %>% 
+  filter(soil_moisture =="wet" | soil_moisture =="moist" | soil_moisture =="dry") %>% 
+  filter(study_area != "Val Bercla") #excluding this because it is an alpine site, not an arctic site
+
+#only including wet and dry, not moist
+spp_filt[spp_filt == "moist"] <- "wet"
+```
+
+### T tests
+
+```{r}
+#creating a separate dataset for each species for t tests
+polviv_ttest<-spp_filt %>% 
+  filter(spp == "POLVIV")
+dralac_ttest<-spp_filt %>% 
+  filter(spp == "DRALAC")
+paprad_ttest<-spp_filt %>% 
+  filter(spp == "PAPRAD")
+pedhir_ttest<-spp_filt %>% 
+  filter(spp == "PEDHIR")
+
+#removing blank values from the POLVIV dataset
+polviv_ttest<-polviv_ttest %>% 
+  filter(soil_moisture == "dry" | soil_moisture == "wet")
+```
+
+T tests have two assumptions:
+1. The dependent variable must be normally distributed in both samples
+2. The variance of the dependent variable must be approximately equal between the two samples
+
+Shapiro-wilk's test:
+
+in this case if we get a non-significant p-value, our data is normally distributed
+
+```{r  initial test of t test assumptions}
+#Shapiro-wilk's test to test normality
+shapiro.test(paprad_ttest$DOY)
+#not normally distributed
+shapiro.test(polviv_ttest$DOY)
+#not normally distributed
+shapiro.test(pedhir_ttest$DOY)
+#not normally distributed
+shapiro.test(dralac_ttest$DOY)
+#normally distributed
+
+# F-test to test for homogeneity in variances
+# H0: Ratio of variance is equal to 1, i.e., samples have equal variance
+var.test(DOY ~ soil_moisture, data=paprad_ttest)
+var.test(DOY ~ soil_moisture, data=polviv_ttest)
+var.test(DOY ~ soil_moisture, data=pedhir_ttest)
+var.test(DOY ~ soil_moisture, data=dralac_ttest)
+```
+```{r  data transformations for normality}
+#transforming data to achieve normal distribution
+hist(spp_filt$DOY) #right skewed
+
+#performing log base 10 transformation
+spp_filt<- spp_filt %>% 
+  mutate(inv_DOY= 1/DOY , log10_DOY= log10(DOY) , sqrt_DOY= sqrt(DOY) , log_DOY= log(DOY))
+
+#---------------------------------------------------------------
+#have to run this again to update
+polviv_ttest<-spp_filt %>% 
+  filter(spp == "POLVIV")
+dralac_ttest<-spp_filt %>% 
+  filter(spp == "DRALAC")
+paprad_ttest<-spp_filt %>% 
+  filter(spp == "PAPRAD")
+pedhir_ttest<-spp_filt %>% 
+  filter(spp == "PEDHIR")
+
+#removing blank values from the POLVIV dataset
+polviv_ttest<-polviv_ttest %>% 
+  filter(soil_moisture == "dry" | soil_moisture == "wet")
+#---------------------------------------------------------------
+
+hist(polviv_ttest$inv_DOY) #normal now
+hist(dralac_ttest$inv_DOY) #normalish -- doesn't need transformations
+hist(pedhir_ttest$inv_DOY) #left skewed
+hist(paprad_ttest$log10_DOY) #normal
+
+#checking Shapiro-wilk's test again:
+shapiro.test(paprad_ttest$log10_DOY)
+#not normally distributed
+shapiro.test(polviv_ttest$inv_DOY)
+#not normally distributed
+shapiro.test(pedhir_ttest$inv_DOY)
+#not normally distributed
+shapiro.test(dralac_ttest$DOY)
+#normally distributed
+
+
+#discuss that there are errors in our results cuz data is not significatly normal and dont have homogeniety of variances
+```
+
+```{r f test after transformations}
+#F tests after data transformations
+var.test(log10_DOY ~ soil_moisture, data=paprad_ttest)
+var.test(inv_DOY ~ soil_moisture, data=polviv_ttest)
+var.test(inv_DOY ~ soil_moisture, data=pedhir_ttest)
+# var.test(DOY ~ soil_moisture, data=dralac_ttest)
+```
+
+
+```{r}
+#performing t test for paprad
+t.test(log10_DOY~soil_moisture, data = paprad_ttest)
+```
+
+```{r}
+#t test for polviv
+t.test(inv_DOY~soil_moisture, data = polviv_ttest)
+```
+
+```{r}
+# t test for dralac
+t.test(DOY~soil_moisture, data = dralac_ttest)
+```
+
+
+```{r}
+#t test for pedhir
+t.test(inv_DOY~soil_moisture, data = pedhir_ttest)
+```
+
+### Modelling 
+
+```{r}
+#this is just for f-ing around, dont include
+t.test(DOY~soil_moisture, data=spp_filt)
+summary(aov(DOY~spp, data=spp_filt))
+
+fixed_model<- lm(DOY~soil_moisture*spp, data=spp_filt)
+summary(fixed_model)
+
+```
+
+```{r}
+#mixed models
+
+mix_model_int1<-lmer(DOY~soil_moisture * spp +
+                      (1|subsite),
+                    data = spp_filt)
+
+mix_model_int2<-lmer(DOY~soil_moisture * spp +
+                      (1|study_area),
+                    data = spp_filt)
+
+mix_model_int3<-lmer(DOY~soil_moisture * spp +
+                      (1|study_area) + (1|subsite),
+                    data = spp_filt)
+
+mix_model_int4<-lmer(DOY~soil_moisture * spp + year +
+                      (1|study_area) + (1|subsite),
+                    data = spp_filt)
+
+mix_model_int5<- lmer(DOY~soil_moisture * spp * year +
+                      (1|subsite),
+                    data = spp_filt)
+
+mix_model_int6<-lmer(DOY~soil_moisture * spp * year +
+                      (1|study_area),
+                    data = spp_filt)
+```
+
+
+```{r}
+#creating a fixed model to test the effects of soil moisture on flowering date
+
+fixed_model2<-lm(DOY~soil_moisture * spp + subsite,
+                    data = spp_filt)
+summary(fixed_model2)
+
+fixed_model3<-lm(DOY~soil_moisture * spp + study_area,
+                    data = spp_filt)
+summary(fixed_model2)
+```
+
+```{r}
+#getting DF
+
+Anova(mix_model_int3, p.adjust.methods = TRUE, type = 2) # in package car to get degrees of freedoms
+```
+
+
+```{r}
+#Using AICc to compare all models
+
+AICc(mix_model_int1, mix_model_int2, mix_model_int3, mix_model_int4, mix_model_int5, mix_model_int6)
+```
+
+```{r}
+#re print the best model and interpret
+
+mix_model_int3<-lmer(DOY~soil_moisture * spp +
+                      (1|study_area) + (1|subsite),
+                    data = spp_filt)
+summary(mix_model_int3)
+library(emmeans)
+emmeans(mix_model_int3, pairwise ~ spp*soil_moisture)
+```
+
+
+###check assumptions for linear model!!!!!
+1. Normality at each X value
+2. Homogeneity of variances at each X
+3. Independence of observations
+
+```{r}
+library(effects)
+library(sjPlot)
+library(glmmTMB)
+plot_model(mix_model_int3, type='diag')
+#our model meets all the assumptions
+```
+
+
+### Graphing
+
+```{r}
+#simple visualizations of our data
+
+spp_filt %>% 
+  ggplot(aes(x=soil_moisture, y=DOY, colour=spp))+
+  geom_boxplot()+
+  labs(x="Soil Moisture", y="Flowering Day")
+
+spp_filt %>% 
+  ggplot(aes(x=spp, y=DOY, colour=soil_moisture))+
+  geom_boxplot()+
+  labs(x="Species", y="Day of Flowering")+
+  theme_classic()#visualization of the t test
+
+avg_doy<-spp_filt %>% 
+  group_by(year, soil_moisture) %>% 
+  mutate(avg_DOY= mean(DOY))
+
+  ggplot(data = avg_doy, aes(x=year, y=avg_DOY, colour=soil_moisture))+
+  geom_point()+
+  labs(x="Year", y="Day of Flowering")+
+  facet_wrap(~spp)+
+    geom_line()+
+    theme_classic()
+  
+  #this shows that theres no change in trend through time^
+
+
+```
+```{r}
+#calculating median day of flowering for each species to accompany the boxplot
+spp_filt %>% 
+  filter(spp == "DRALAC") %>% 
+  filter(soil_moisture == "dry") %>% 
+  summarize(median = median(DOY))
+
+spp_filt %>% 
+  filter(spp == "DRALAC") %>% 
+  filter(soil_moisture == "wet") %>% 
+  summarize(median = median(DOY))
+
+spp_filt %>% 
+  filter(spp == "PAPRAD") %>% 
+  filter(soil_moisture == "dry") %>% 
+  summarize(median = median(DOY)) 
+
+spp_filt %>% 
+  filter(spp == "PAPRAD") %>% 
+  filter(soil_moisture == "wet") %>% 
+  summarize(median = median(DOY))
+
+spp_filt %>% 
+  filter(spp == "PEDHIR") %>% 
+  filter(soil_moisture == "dry") %>% 
+  summarize(median = median(DOY))
+
+spp_filt %>% 
+  filter(spp == "PEDHIR") %>% 
+  filter(soil_moisture == "wet") %>% 
+  summarize(median = median(DOY))
+
+spp_filt %>% 
+  filter(spp == "POLVIV") %>% 
+  filter(soil_moisture == "dry") %>% 
+  summarize(median = median(DOY))
+
+spp_filt %>% 
+  filter(spp == "POLVIV") %>% 
+  filter(soil_moisture == "wet") %>% 
+  summarize(median = median(DOY))
+```
+
+
+
+```{r}
+#finding flowering time length to compare between wet and dry soils
+
+flower_end<-pheno_data %>% 
+  filter(phenophase == "flowerend"| phenophase == "flower") %>% 
+  filter(treatment == "CTL") %>% 
+  filter(functional_group == "forb") %>% 
+  filter(spp == "DRALAC" | spp == "PAPRAD" | spp == "POLVIV" | spp == "PEDHIR") %>% 
+  pivot_wider(names_from = phenophase, values_from = DOY) %>% 
+  filter(flower != "NA") %>% 
+  filter(flowerend != "NA") %>% 
+  mutate(flowering_length = flowerend - flower)
+
+  flower_end$soil_moisture <- gsub("moist","wet",flower_end$soil_moisture)
+  
+#visualizing the data
+flower_end %>% 
+  ggplot(aes(x=spp, y=flowering_length, colour=soil_moisture))+
+  geom_boxplot()+
+  labs(x="Species", y="Flowering Length")
+
+#t.tests to compare flowering length in dry and wet soil
+dralac<- flower_end %>% 
+  filter(spp== "DRALAC")
+
+t.test(flowering_length~soil_moisture, data=dralac)
+
+pedhir<- flower_end %>% 
+  filter(spp== "PEDHIR")
+
+t.test(flowering_length~soil_moisture, data=pedhir)
+
+paprad<- flower_end %>% 
+  filter(spp== "PAPRAD")
+
+t.test(flowering_length~soil_moisture, data=paprad)
+
+polviv<- flower_end %>% 
+  filter(spp== "POLVIV")
+
+t.test(flowering_length~soil_moisture, data=polviv)
+
+```
+
+
+
+
+
+
+
